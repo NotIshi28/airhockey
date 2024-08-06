@@ -209,5 +209,143 @@ function drawExplosion()
   } )
 }
 
+function movePaddle( x, y )
+{
+  let r = canvas.getBoundingClientRect();
+  paddle.x = Math.min( Math.max( x - r.left, paddle.radius ), canvas.width - paddle.radius );
+  paddle.y = Math.min( Math.max( y - r.top, canvas.height / 2 + paddle.radius ), canvas.height - paddle.radius )
+}
+
+function handleMouseMove( e )
+{
+  if ( !gameOver ) movePaddle( e.clientX, e.clientY );
+}
+
+function handleTouchMove( e )
+{
+  if ( !gameOver )
+  {
+    e.preventDefault();
+    const touch = e.touches[ 0 ];
+    movePaddle( touch.clientX, touch.clientY );
+  }
+}
+
+function isPuckStuck()
+{
+  return puck.y < canvas.height / 4 && ( puck.x < puck.radius * 2 || puck.x > canvas.width - puck.radius * 2 )
+}
+
+function moveAIPaddle()
+{
+  const c = aiPaddle.x,
+    d = Math.abs( c - canvas.width / 2 );
+  if ( aiState === 'normal' && isPuckStuck() )
+  {
+    aiState = 'retreating';
+    puckStuckTime = 0;
+  }
+  if ( aiState === 'retreating' )
+  {
+    const targetX = canvas.width / 2;
+    const targetY = aiPaddle.radius;
+    const dx = targetX - aiPaddle.x;
+    const dy = targetY - aiPaddle.y;
+    const distance = Math.sqrt( dx * dx + dy * dy );
+    if ( distance > aiPaddle.speed )
+    {
+      aiPaddle.x += dx / distance * aiPaddle.speed * simulationSpeedMultiplier;
+      aiPaddle.y += dy / distance * aiPaddle.speed * simulationSpeedMultiplier;
+    }
+    else
+    {
+      aiPaddle.x = targetX;
+      aiPaddle.y = targetY;
+      aiState = 'waiting';
+      aiWaitTime = 0;
+    }
+  }
+  else if ( aiState === 'waiting' )
+  {
+    aiWaitTime += simulationSpeedMultiplier;
+    if ( aiWaitTime > 90 )
+    { // Wait for 1.5 seconds (90 frames)
+      aiState = 'playing';
+    }
+  }
+  else if ( aiState === 'playing' )
+  {
+    if ( Math.abs( puck.x - c ) > 10 ) puck.x > c ? aiPaddle.x += aiPaddle.speed * 0.8 * simulationSpeedMultiplier : aiPaddle.x -= aiPaddle.speed * 0.8 * simulationSpeedMultiplier;
+    aiPaddle.y = Math.min( aiPaddle.y + aiPaddle.speed * 0.8 * simulationSpeedMultiplier, canvas.height / 2 - aiPaddle.radius );
+    if ( aiPaddle.y === canvas.height / 2 - aiPaddle.radius )
+    {
+      aiState = 'normal';
+    }
+  }
+  else if ( aiState === 'normal' )
+  {
+    if ( puck.y < canvas.height / 2 )
+    {
+      if ( Math.abs( puck.x - c ) > 10 ) puck.x > c ? aiPaddle.x += aiPaddle.speed * 0.8 * simulationSpeedMultiplier : aiPaddle.x -= aiPaddle.speed * 0.8 * simulationSpeedMultiplier;
+      puck.y > aiPaddle.y && Math.abs( puck.x - c ) < 60 ? aiPaddle.y += aiPaddle.speed * 0.8 * simulationSpeedMultiplier : aiPaddle.y += ( 50 - aiPaddle.y ) * .04 * simulationSpeedMultiplier
+    }
+    else
+    {
+      d > 80 ? aiPaddle.x += ( canvas.width / 2 - c ) * .02 * simulationSpeedMultiplier : Math.abs( puck.x - c ) > 15 && ( puck.x > c ? aiPaddle.x += aiPaddle.speed * 0.8 * simulationSpeedMultiplier : aiPaddle.x -= aiPaddle.speed * 0.8 * simulationSpeedMultiplier );
+      aiPaddle.y += ( 50 - aiPaddle.y ) * .04 * simulationSpeedMultiplier
+    }
+  }
+  aiPaddle.x = Math.min( Math.max( aiPaddle.x, aiPaddle.radius ), canvas.width - aiPaddle.radius );
+  aiPaddle.y = Math.min( Math.max( aiPaddle.y, aiPaddle.radius ), canvas.height / 2 - aiPaddle.radius )
+}
+
+function collisionDetection()
+{
+  if ( puck.x + puck.dx > canvas.width - puck.radius || puck.x + puck.dx < puck.radius ) puck.dx = -puck.dx;
+  if ( ( puck.y + puck.dy > canvas.height - puck.radius && ( puck.x <= ( canvas.width - goal.width ) / 2 || puck.x >= ( canvas.width + goal.width ) / 2 ) ) || ( puck.y + puck.dy < puck.radius && ( puck.x <= ( canvas.width - goal.width ) / 2 || puck.x >= ( canvas.width + goal.width ) / 2 ) ) ) puck.dy = -puck.dy;
+  const dp = Math.hypot( puck.x - paddle.x, puck.y - paddle.y ),
+    da = Math.hypot( puck.x - aiPaddle.x, puck.y - aiPaddle.y );
+  if ( dp < puck.radius + paddle.radius )
+  {
+    const a = Math.atan2( puck.y - paddle.y, puck.x - paddle.x );
+    puck.dx = Math.cos( a ) * puck.speed;
+    puck.dy = Math.sin( a ) * puck.speed
+  }
+  if ( da < puck.radius + aiPaddle.radius )
+  {
+    const a = Math.atan2( puck.y - aiPaddle.y, puck.x - aiPaddle.x );
+    puck.dx = Math.cos( a ) * puck.speed;
+    puck.dy = Math.sin( a ) * puck.speed
+  }
+  if ( puck.y > canvas.height - puck.radius && puck.x > ( canvas.width - goal.width ) / 2 && puck.x < ( canvas.width + goal.width ) / 2 )
+  {
+    aiScore++;
+    resetPuck();
+    lastScoreTime = Date.now();
+    goalEffect = {
+      active: true,
+      startTime: Date.now(),
+      scorer: 'AI'
+    };
+    createExplosion( puck.x, canvas.height );
+    checkWinner();
+  }
+  else if ( puck.y < puck.radius && puck.x > ( canvas.width - goal.width ) / 2 && puck.x < ( canvas.width + goal.width ) / 2 )
+  {
+    playerScore++;
+    resetPuck();
+    lastScoreTime = Date.now();
+    goalEffect = {
+      active: true,
+      startTime: Date.now(),
+      scorer: 'Player'
+    };
+    createExplosion( puck.x, 0 );
+    checkWinner();
+  }
+  puck.x = Math.min( Math.max( puck.x, puck.radius ), canvas.width - puck.radius );
+  puck.y = Math.min( Math.max( puck.y, puck.radius ), canvas.height - puck.radius )
+}
+
 </script>
 </body></html>

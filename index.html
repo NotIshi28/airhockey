@@ -1,0 +1,103 @@
+<html><head>
+<title>Vertical Air Hockey</title>
+<style>
+body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100vh;
+	margin: 0;
+	background: #1a1a1a;
+	font-family: Arial,sans-serif;
+	overflow: hidden;
+	touch-action: none
+}
+
+#gameCanvas {
+	border: 10px solid #444;
+	border-radius: 20px;
+	box-shadow: 0 0 20px rgba(0,0,0,.5)
+}
+
+#scoreBoard {
+	position: absolute;
+	top: 20px;
+	font-size: 32px;
+	font-weight: 700;
+	color: #fff;
+	text-shadow: 2px 2px 4px rgba(0,0,0,.5)
+}
+
+#winMessage {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%,-50%);
+	font-size: 48px;
+	font-weight: 700;
+	color: #fff;
+	text-shadow: 2px 2px 4px rgba(0,0,0,.5);
+	display: none;
+	background: rgba(0,0,0,0.7);
+	padding: 20px;
+	border-radius: 10px;
+	text-align: center
+}
+
+#restartButton {
+	display: none;
+	margin-top: 20px;
+	padding: 10px 20px;
+	font-size: 24px;
+	background-color: #e74c3c;
+	color: #fff;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: background-color 0.3s
+}
+
+#restartButton:hover {
+	background-color: #c0392b
+}
+</style>
+</head>
+<body>
+<div id="scoreBoard">Player: 0 | AI: 0</div>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<div id="winMessage">
+    <div id="winText"></div>
+    <button id="restartButton">Restart Game</button>
+</div>
+<script>
+const canvas = document.getElementById( 'gameCanvas' )
+ctx = canvas.getContext( '2d' )
+scoreBoard = document.getElementById( 'scoreBoard' )
+winMessage = document.getElementById( 'winMessage' )
+winText = document.getElementById( 'winText' )
+restartButton = document.getElementById( 'restartButton' ),
+  paddle = {
+    radius: 25,
+    y: canvas.height - 50
+  }
+aiPaddle = {
+  radius: 25,
+  y: 50,
+  speed: 2.8
+}
+puck = {
+  radius: 15,
+  speed: 7
+}
+goal = {
+  width: 150,
+  height: 10
+};
+let playerScore = 0
+aiScore = 0, lastScoreTime = 0, puckStuckTime = 0, aiWaitTime = 0, aiState = 'normal', goalEffect = {
+  active: false,
+  startTime: 0,
+  scorer: ''
+}, particles = [], gameOver = false;
+</script>
+</body></html>
